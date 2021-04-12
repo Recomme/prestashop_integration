@@ -263,8 +263,14 @@ class Recomme extends Module
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => Tools::jsonEncode($order),
         ));
-        $response = curl_exec($curl);
-        $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        
+        if($response = curl_exec($curl)) {
+            $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            
+            if($http_status == 200)
+                Context::getContext()->cookie->__unset('recomme_r_code');
+        }
+        
         curl_close($curl);
         // echo "<pre>"; var_dump($http_status, $response); exit;
     }
