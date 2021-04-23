@@ -220,12 +220,6 @@ class Recomme extends Module
             $address     = new Address((int) $order->id_address_delivery);
             $currency    = new Currency((int) $order->id_currency);
             $country     = new Country($address->id_country);
-            $tax = round($order->total_paid_tax_incl - $order->total_paid_tax_excl, 2);
-            $price = round($order->total_products - $order->total_discounts, 2);
-            $discount = round($order->total_discounts, 2);
-            $total = round($tax + $order->total_shipping + $order->total_products, 2) - round($order->total_discounts, 2);
-            $revenue = round(($order->total_products + $order->total_shipping ) - $order->total_discounts, 2);
-
             $orderData = [
                 'api_key'               => Configuration::get('RECOMME_API_KEY'),
                 'first_name'            => $customer->firstname,
@@ -234,10 +228,11 @@ class Recomme extends Module
                 'order_timestamp'       => strtotime($order->date_add),
                 'browser_ip'            => !empty($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : "",
                 'user_agent'            => !empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : "",
-                'invoice_amount'        => $total,
+                'invoice_amount'        => $order->total_paid_tax_incl,
                 'currency_code'         => $currency->iso_code,
                 'country'               => $country->iso_code,
                 'external_reference_id' => $orderId,
+                'coupons'                => $this->getOrderCoupons($orderId),
                 'ref_code'              => Context::getContext()->cookie->__isset('recomme_r_code') ? Context::getContext()->cookie->__get('recomme_r_code') : "",
                 'timestamp'             => time(),
             ];
@@ -273,6 +268,21 @@ class Recomme extends Module
         
         curl_close($curl);
         // echo "<pre>"; var_dump($http_status, $response); exit;
+    }
+
+    public function getOrderCoupons($id_order)
+    {
+        $coupons = [];
+        $sql     = 'SELECT code FROM ' . _DB_PREFIX_ . 'order_cart_rule ocr INNER JOIN ' . _DB_PREFIX_ . 'cart_rule cr ON cr.id_cart_rule = ocr.id_cart_rule WHERE ocr.id_order=' . (int) $id_order;
+        $rows    = Db::getInstance()->executeS($sql);
+
+        if (count($rows) > 0) {
+            foreach ($rows as $code) {
+                $coupons[] = $code['code'];
+            }
+        }
+
+        return $coupons;
     }
 
     public function hookDisplayOrderConfirmation()
