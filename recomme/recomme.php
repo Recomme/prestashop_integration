@@ -61,9 +61,21 @@ class Recomme extends Module
     {
         Configuration::updateValue('RECOMME_LIVE_MODE', false);
 
+        Db::getInstance()->execute(
+                'CREATE TABLE IF NOT EXISTS ' . _DB_PREFIX_ . 'recomme_rcrs (
+                        id INT NOT NULL AUTO_INCREMENT,
+                        id_order INT UNSIGNED NOT NULL,
+                        rcr VARCHAR(255) NOT NULL,
+                        PRIMARY KEY (id)
+                        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8'
+        ); 
+
         return parent::install() &&
             $this->registerHook('header') &&
-            $this->registerHook('displayOrderConfirmation');
+            $this->registerHook('displayOrderConfirmation') &&
+            $this->registerHook('actionOrderStatusPostUpdate');
+
+            
     }
 
     public function uninstall()
@@ -121,6 +133,9 @@ class Recomme extends Module
      */
     protected function getConfigForm()
     {
+        $states = new OrderState(); 
+        $statesOptions = $states->getOrderStates($this->context->language->id); 
+
         return array(
             'form' => array(
                 'legend' => array(
@@ -146,7 +161,44 @@ class Recomme extends Module
                                 'label' => $this->l('Disabled')
                             )
                         ),
-                    ),           
+                    ),    
+                    array(
+                        'type' => 'select',
+                        'lang' => true,
+                        'label' => $this->l('Select paid status'),
+                        'name' => 'RECOMME_SUCCESS_STATUS',
+                        'desc' => $this->l('Please select status that means the order has been paid'),
+                        'options' => array(
+                          'query' => $statesOptions,
+                          'id' => 'id_order_state', 
+                          'name' => 'name'
+                        ),
+                    ),
+
+                    array(
+                        'type' => 'select',
+                        'lang' => true,
+                        'label' => $this->l('Select second paid status'),
+                        'name' => 'RECOMME_SUCCESS_STATUS_2',
+                        'desc' => $this->l('Please select status that means the order has been paid'),
+                        'options' => array(
+                          'query' => $statesOptions,
+                          'id' => 'id_order_state', 
+                          'name' => 'name'
+                        ),
+                    ),
+                    array(
+                        'type' => 'select',
+                        'lang' => true,
+                        'label' => $this->l('Select third paid status'),
+                        'name' => 'RECOMME_SUCCESS_STATUS_3',
+                        'desc' => $this->l('Please select status that means the order has been paid'),
+                        'options' => array(
+                          'query' => $statesOptions,
+                          'id' => 'id_order_state', 
+                          'name' => 'name'
+                        ),
+                    ),
                     array(
                         'col' => 4,
                         'type' => 'text',
@@ -177,6 +229,8 @@ class Recomme extends Module
         return array(
             'RECOMME_LIVE_MODE' => Configuration::get('RECOMME_LIVE_MODE', true),
             'RECOMME_SUCCESS_STATUS' => Configuration::get('RECOMME_SUCCESS_STATUS', null),
+            'RECOMME_SUCCESS_STATUS_2' => Configuration::get('RECOMME_SUCCESS_STATUS_2', null),
+            'RECOMME_SUCCESS_STATUS_3' => Configuration::get('RECOMME_SUCCESS_STATUS_3', null),
             'RECOMME_ACCOUNT_KEY' => Configuration::get('RECOMME_ACCOUNT_KEY', null),
             'RECOMME_API_KEY' => Configuration::get('RECOMME_API_KEY', null),
         );
@@ -211,7 +265,7 @@ class Recomme extends Module
         }
     }
 
-    public function buildOrder($orderId)
+    public function buildOrder($orderId, $rcr = null)
     {
         $order = new Order((int) $orderId);
 
@@ -232,8 +286,8 @@ class Recomme extends Module
                 'currency_code'         => $currency->iso_code,
                 'country'               => $country->iso_code,
                 'external_reference_id' => $orderId,
-                'coupons'                => $this->getOrderCoupons($orderId),
-                'ref_code'              => Context::getContext()->cookie->__isset('recomme_r_code') ? Context::getContext()->cookie->__get('recomme_r_code') : "",
+                // 'coupons'                => $this->getOrderCoupons($orderId),
+                'ref_code'              => $rcr,
                 'timestamp'             => time(),
             ];
             return $orderData;
@@ -264,10 +318,11 @@ class Recomme extends Module
             
             if($http_status == 200)
                 Context::getContext()->cookie->__unset('recomme_r_code');
+                setcookie("recomme_r_code","", time()-3600);
+                unset ($_COOKIE['recomme_r_code']);
         }
         
         curl_close($curl);
-        // echo "<pre>"; var_dump($http_status, $response); exit;
     }
 
     public function getOrderCoupons($id_order)
@@ -285,12 +340,54 @@ class Recomme extends Module
         return $coupons;
     }
 
+    public function insertRcr($id_order, $rcr)
+    {
+        $insert_sql = 'INSERT INTO '._DB_PREFIX_.'recomme_rcrs(
+                            id_order,
+                            rcr
+                        ) VALUES (' .
+            (int) $id_order.', '.
+            '\''.pSQL($rcr).'\''.
+            ')';
+        return Db::getInstance()->execute($insert_sql);
+    }
+
+    public function getRcr($id_order) 
+    {
+        $sql     = 'SELECT rcr, id_order FROM ' . _DB_PREFIX_ . 'recomme_rcrs WHERE id_order=' . (int) $id_order;
+        $rcr = Db::getInstance()->getRow($sql);
+        return $rcr['rcr'];
+    }
+
     public function hookDisplayOrderConfirmation()
     {
-        $id_order = Tools::getValue('id_order');       
+        $id_order = Tools::getValue('id_order');
+
+        if(Context::getContext()->cookie->__isset('recomme_r_code')) {
+            $this->insertRcr($id_order, Context::getContext()->cookie->__get('recomme_r_code'));
+        }
+
         $order = $this->buildOrder($id_order);
-        
-        if($order)
-            $this->sendOrder($order);
+        $this->sendOrder($order);
+    }
+
+
+    public function hookActionOrderStatusPostUpdate($params)
+    {
+        $id_order_state = !empty($params['newOrderStatus']) ? $params['newOrderStatus']->id : false;
+        $id_order = Tools::getValue('id_order');
+        $rcr = null;
+
+        if(
+            ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS')) ||
+            ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS_2')) ||
+            ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS_3'))
+        ) {
+            $rcr = $this->getRcr($id_order);
+        }
+       
+        $order = $this->buildOrder($id_order, $rcr);
+
+        $this->sendOrder($order);
     }
 }
