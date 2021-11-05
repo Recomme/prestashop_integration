@@ -297,7 +297,7 @@ class Recomme extends Module
 
     private function sendOrder($order) 
     {
-        $bearerToken = "Bearer: " . Configuration::get('RECOMME_API_KEY');
+		$bearerToken = "Authorization: Bearer " . Configuration::get('RECOMME_API_KEY');
         $customer = "Customer: " . Configuration::get('RECOMME_ACCOUNT_KEY');
         $endpoint = join('/', [$this->base_api_url, 'purchase']);
 
