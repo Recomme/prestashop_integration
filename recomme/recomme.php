@@ -1,28 +1,28 @@
 <?php
 /**
-* 2007-2021 PrestaShop
-*
-* NOTICE OF LICENSE
-*
-* This source file is subject to the Academic Free License (AFL 3.0)
-* that is bundled with this package in the file LICENSE.txt.
-* It is also available through the world-wide-web at this URL:
-* http://opensource.org/licenses/afl-3.0.php
-* If you did not receive a copy of the license and are unable to
-* obtain it through the world-wide-web, please send an email
-* to license@prestashop.com so we can send you a copy immediately.
-*
-* DISCLAIMER
-*
-* Do not edit or add to this file if you wish to upgrade PrestaShop to newer
-* versions in the future. If you wish to customize PrestaShop for your
-* needs please refer to http://www.prestashop.com for more information.
-*
-*  @author    PrestaShop SA <contact@prestashop.com>
-*  @copyright 2007-2021 PrestaShop SA
-*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
-*/
+ * 2007-2021 PrestaShop
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License (AFL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * http://opensource.org/licenses/afl-3.0.php
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please refer to http://www.prestashop.com for more information.
+ *
+ * @author    PrestaShop SA <contact@prestashop.com>
+ * @copyright 2007-2021 PrestaShop SA
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *  International Registered Trademark & Property of PrestaShop SA
+ */
 
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -62,20 +62,20 @@ class Recomme extends Module
         Configuration::updateValue('RECOMME_LIVE_MODE', false);
 
         Db::getInstance()->execute(
-                'CREATE TABLE IF NOT EXISTS ' . _DB_PREFIX_ . 'recomme_rcrs (
+            'CREATE TABLE IF NOT EXISTS ' . _DB_PREFIX_ . 'recomme_rcrs (
                         id INT NOT NULL AUTO_INCREMENT,
                         id_order INT UNSIGNED NOT NULL,
                         rcr VARCHAR(255) NOT NULL,
                         PRIMARY KEY (id)
                         ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8'
-        ); 
+        );
 
         return parent::install() &&
             $this->registerHook('header') &&
             $this->registerHook('displayOrderConfirmation') &&
             $this->registerHook('actionOrderStatusPostUpdate');
 
-            
+
     }
 
     public function uninstall()
@@ -116,7 +116,7 @@ class Recomme extends Module
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submitRecommeModule';
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
         $helper->tpl_vars = array(
@@ -133,14 +133,14 @@ class Recomme extends Module
      */
     protected function getConfigForm()
     {
-        $states = new OrderState(); 
-        $statesOptions = $states->getOrderStates($this->context->language->id); 
+        $states = new OrderState();
+        $statesOptions = $states->getOrderStates($this->context->language->id);
 
         return array(
             'form' => array(
                 'legend' => array(
-                'title' => $this->l('Settings'),
-                'icon' => 'icon-cogs',
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs',
                 ),
                 'input' => array(
                     array(
@@ -161,7 +161,7 @@ class Recomme extends Module
                                 'label' => $this->l('Disabled')
                             )
                         ),
-                    ),    
+                    ),
                     array(
                         'type' => 'select',
                         'lang' => true,
@@ -169,9 +169,9 @@ class Recomme extends Module
                         'name' => 'RECOMME_SUCCESS_STATUS',
                         'desc' => $this->l('Please select status that means the order has been paid'),
                         'options' => array(
-                          'query' => $statesOptions,
-                          'id' => 'id_order_state', 
-                          'name' => 'name'
+                            'query' => $statesOptions,
+                            'id' => 'id_order_state',
+                            'name' => 'name'
                         ),
                     ),
 
@@ -182,9 +182,9 @@ class Recomme extends Module
                         'name' => 'RECOMME_SUCCESS_STATUS_2',
                         'desc' => $this->l('Please select status that means the order has been paid'),
                         'options' => array(
-                          'query' => $statesOptions,
-                          'id' => 'id_order_state', 
-                          'name' => 'name'
+                            'query' => $statesOptions,
+                            'id' => 'id_order_state',
+                            'name' => 'name'
                         ),
                     ),
                     array(
@@ -194,9 +194,9 @@ class Recomme extends Module
                         'name' => 'RECOMME_SUCCESS_STATUS_3',
                         'desc' => $this->l('Please select status that means the order has been paid'),
                         'options' => array(
-                          'query' => $statesOptions,
-                          'id' => 'id_order_state', 
-                          'name' => 'name'
+                            'query' => $statesOptions,
+                            'id' => 'id_order_state',
+                            'name' => 'name'
                         ),
                     ),
                     array(
@@ -256,48 +256,57 @@ class Recomme extends Module
 
     public function hookHeader($params)
     {
+        if (isset($_COOKIE['recomme_r_code']) && $_COOKIE['recomme_r_code'] !== null) {
+            $rcr = $_COOKIE['recomme_r_code'];
+            $this->saveCookie($rcr);
+        }
         if (isset($_GET['rcr']) && $_GET['rcr'] !== null) {
             $rcr = $_GET['rcr'];
-            $days_to_keep_cookies = 28;
-            setcookie('recomme_r_code', $rcr, time() + (86400 * $days_to_keep_cookies));
-            Context::getContext()->cookie->__set('recomme_r_code', $rcr);
-            Context::getContext()->cookie->write();
+            $this->saveCookie($rcr);
         }
+    }
+
+    private function saveCookie($rcr)
+    {
+        $days_to_keep_cookies = 28;
+        setcookie('recomme_r_code', $rcr, time() + (86400 * $days_to_keep_cookies));
+        Context::getContext()->cookie->__set('recomme_r_code', $rcr);
+        Context::getContext()->cookie->write();
     }
 
     public function buildOrder($orderId, $rcr = null)
     {
-        $order = new Order((int) $orderId);
+        $order = new Order((int)$orderId);
 
         if (is_object($order)) {
-            $customer    = new Customer($order->id_customer);
-            $address     = new Address((int) $order->id_address_delivery);
-            $currency    = new Currency((int) $order->id_currency);
-            $country     = new Country($address->id_country);
+            $customer = new Customer($order->id_customer);
+            $address = new Address((int)$order->id_address_delivery);
+            $currency = new Currency((int)$order->id_currency);
+            $country = new Country($address->id_country);
             $orderData = [
-                'api_key'               => Configuration::get('RECOMME_API_KEY'),
-                'first_name'            => $customer->firstname,
-                'last_name'             => $customer->lastname,
-                'email'                 => $customer->email,
-                'order_timestamp'       => strtotime($order->date_add),
-                'browser_ip'            => !empty($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : "",
-                'user_agent'            => !empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : "",
-                'invoice_amount'        => $order->total_paid_tax_incl,
-                'currency_code'         => $currency->iso_code,
-                'country'               => $country->iso_code,
+                'api_key' => Configuration::get('RECOMME_API_KEY'),
+                'first_name' => $customer->firstname,
+                'last_name' => $customer->lastname,
+                'email' => $customer->email,
+                'order_timestamp' => strtotime($order->date_add),
+                'browser_ip' => !empty($_SERVER['HTTP_CLIENT_IP']) ? $_SERVER['HTTP_CLIENT_IP'] : "",
+                'user_agent' => !empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : "",
+                'invoice_amount' => $order->total_paid_tax_incl,
+                'currency_code' => $currency->iso_code,
+                'country' => $country->iso_code,
                 'external_reference_id' => $orderId,
                 // 'coupons'                => $this->getOrderCoupons($orderId),
-                'ref_code'              => $rcr,
-                'timestamp'             => time(),
+                'ref_code' => $rcr,
+                'timestamp' => time(),
             ];
             return $orderData;
         }
         return false;
     }
 
-    private function sendOrder($order) 
+    private function sendOrder($order)
     {
-		$bearerToken = "Authorization: Bearer " . Configuration::get('RECOMME_API_KEY');
+        $bearerToken = "Authorization: Bearer " . Configuration::get('RECOMME_API_KEY');
         $customer = "Customer: " . Configuration::get('RECOMME_ACCOUNT_KEY');
         $endpoint = join('/', [$this->base_api_url, 'purchase']);
 
@@ -312,24 +321,24 @@ class Recomme extends Module
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => Tools::jsonEncode($order),
         ));
-        
-        if($response = curl_exec($curl)) {
+
+        if ($response = curl_exec($curl)) {
             $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            
-            if($http_status == 200)
+
+            if ($http_status == 200)
                 Context::getContext()->cookie->__unset('recomme_r_code');
-                setcookie("recomme_r_code","", time()-3600);
-                unset ($_COOKIE['recomme_r_code']);
+            setcookie("recomme_r_code", "", time() - 3600);
+            unset ($_COOKIE['recomme_r_code']);
         }
-        
+
         curl_close($curl);
     }
 
     public function getOrderCoupons($id_order)
     {
         $coupons = [];
-        $sql     = 'SELECT code FROM ' . _DB_PREFIX_ . 'order_cart_rule ocr INNER JOIN ' . _DB_PREFIX_ . 'cart_rule cr ON cr.id_cart_rule = ocr.id_cart_rule WHERE ocr.id_order=' . (int) $id_order;
-        $rows    = Db::getInstance()->executeS($sql);
+        $sql = 'SELECT code FROM ' . _DB_PREFIX_ . 'order_cart_rule ocr INNER JOIN ' . _DB_PREFIX_ . 'cart_rule cr ON cr.id_cart_rule = ocr.id_cart_rule WHERE ocr.id_order=' . (int)$id_order;
+        $rows = Db::getInstance()->executeS($sql);
 
         if (count($rows) > 0) {
             foreach ($rows as $code) {
@@ -342,19 +351,19 @@ class Recomme extends Module
 
     public function insertRcr($id_order, $rcr)
     {
-        $insert_sql = 'INSERT INTO '._DB_PREFIX_.'recomme_rcrs(
+        $insert_sql = 'INSERT INTO ' . _DB_PREFIX_ . 'recomme_rcrs(
                             id_order,
                             rcr
                         ) VALUES (' .
-            (int) $id_order.', '.
-            '\''.pSQL($rcr).'\''.
+            (int)$id_order . ', ' .
+            '\'' . pSQL($rcr) . '\'' .
             ')';
         return Db::getInstance()->execute($insert_sql);
     }
 
-    public function getRcr($id_order) 
+    public function getRcr($id_order)
     {
-        $sql     = 'SELECT rcr, id_order FROM ' . _DB_PREFIX_ . 'recomme_rcrs WHERE id_order=' . (int) $id_order;
+        $sql = 'SELECT rcr, id_order FROM ' . _DB_PREFIX_ . 'recomme_rcrs WHERE id_order=' . (int)$id_order;
         $rcr = Db::getInstance()->getRow($sql);
         return $rcr['rcr'];
     }
@@ -363,7 +372,7 @@ class Recomme extends Module
     {
         $id_order = Tools::getValue('id_order');
 
-        if(Context::getContext()->cookie->__isset('recomme_r_code')) {
+        if (Context::getContext()->cookie->__isset('recomme_r_code')) {
             $this->insertRcr($id_order, Context::getContext()->cookie->__get('recomme_r_code'));
         }
 
@@ -375,17 +384,17 @@ class Recomme extends Module
     public function hookActionOrderStatusPostUpdate($params)
     {
         $id_order_state = !empty($params['newOrderStatus']) ? $params['newOrderStatus']->id : false;
-        $id_order = Tools::getValue('id_order');
+        $id_order = @$params['id_order'];
         $rcr = null;
 
-        if(
+        if (
             ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS')) ||
             ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS_2')) ||
             ($id_order_state == Configuration::get('RECOMME_SUCCESS_STATUS_3'))
         ) {
             $rcr = $this->getRcr($id_order);
         }
-       
+
         $order = $this->buildOrder($id_order, $rcr);
 
         $this->sendOrder($order);
